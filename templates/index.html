@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RanSMAP Ransomware Detector - 6 CSV Preprocessor & Classifier</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --accent-red: #ef4444;
+            --accent-green: #22c55e;
+            --accent-amber: #f59e0b;
+            --accent-purple: #a855f7;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            line-height: 1.6;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 24px 0 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-info {
+            background-color: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+
+        .badge-success {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        .badge-danger {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .badge-warning {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: #fde047;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .badge-purple {
+            background-color: rgba(168, 85, 247, 0.2);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        /* Model Selector Box */
+        .model-selector-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .model-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .model-option-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--bg-secondary);
+        }
+
+        .model-option-card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .model-option-card.selected {
+            border-color: var(--accent-purple);
+            background: rgba(168, 85, 247, 0.1);
+            box-shadow: 0 0 0 1px var(--accent-purple);
+        }
+
+        .model-option-card input[type="radio"] {
+            margin-top: 4px;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .file-slot {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            transition: border-color 0.2s ease;
+        }
+
+        .file-slot.has-file {
+            border-color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .file-label {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-desc {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 12px;
+            font-size: 0.85rem;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: var(--border-color);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-blue-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .verdict-banner {
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 2px solid transparent;
+        }
+
+        .verdict-banner.ransomware {
+            background-color: rgba(239, 68, 68, 0.15);
+            border-color: var(--accent-red);
+        }
+
+        .verdict-banner.benign {
+            background-color: rgba(34, 197, 94, 0.15);
+            border-color: var(--accent-green);
+        }
+
+        .verdict-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .verdict-banner.ransomware .verdict-title {
+            color: #fca5a5;
+        }
+
+        .verdict-banner.benign .verdict-title {
+            color: #86efac;
+        }
+
+        .verdict-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(15, 23, 42, 0.8);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: #334155;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border-left-color: var(--accent-blue);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            max-height: 450px;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .tag-mal {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+
+        .tag-ben {
+            background: #14532d;
+            color: #bbf7d0;
+        }
+
+        .info-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .step-num {
+            background: #334155;
+            color: #93c5fd;
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RanSMAP Ransomware Classifier App</h1>
+            <p class="subtitle">
+                Ingests 6 low-level telemetry CSV files, executes the exact preprocessing pipeline from the study, 
+                and evaluates ransomware activity using your choice of models.
+            </p>
+        </header>
+
+        <!-- Pipeline Information Card -->
+        <div class="card">
+            <div class="card-title">
+                <span>RanSMAP Preprocessing & Inference Architecture</span>
+                <span class="badge badge-info">Multi-Model Pipeline</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <div class="info-step">
+                    <div class="step-num">1</div>
+                    <div>
+                        <strong>Input 6 CSV Telemetry Files</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                            4 Memory files (<code>mem_read</code>, <code>mem_write</code>, <code>mem_exec</code>, <code>mem_readwrite</code>) + 2 Storage files (<code>ata_read</code>, <code>ata_write</code>).
+                        </div>
+                    </div>
+                </div>
+                <div class="info-step">
+                    <div class="step-num">2</div>
+                    <div>
+                        <strong>Data Cleaning & Extraction</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                            Cleans missing values (<code>dropna</code>), parses hex GPA addresses, extracts <code>[GPA, size, entropy, type]</code>.
+                        </div>
+                    </div>
+                </div>
+                <div class="info-step">
+                    <div class="step-num">3</div>
+                    <div>
+                        <strong>Classifier Selection</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                            Choose between the <strong>Temporal-Aware Transformer (96.5% F1)</strong> or the <strong>Baseline Bagging Ensemble (63.9%)</strong>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="card">
+            <div class="card-title">
+                <span>Upload 6 CSV Files & Select Model</span>
+                <span class="badge badge-purple">Inference Configuration</span>
+            </div>
+
+            <!-- Model Selection -->
+            <div class="model-selector-box">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 0.95rem;">Select Prediction Model:</div>
+                <div class="model-options">
+                    <label class="model-option-card selected" id="card-temporal">
+                        <input type="radio" name="model_choice" value="temporal_transformer" checked onchange="selectModel('temporal_transformer')">
+                        <div>
+                            <div style="font-weight: 600; color: #d8b4fe; display: flex; align-items: center; gap: 8px;">
+                                Temporal-Aware Transformer
+                                <span class="badge badge-purple" style="font-size: 0.7rem;">96.5% F1 (Recommended)</span>
+                            </div>
+                            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px;">
+                                Single Optimized Transformer Encoder with multi-scale harmonic temporal positional encodings. Disambiguates burst patterns.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="model-option-card" id="card-baseline">
+                        <input type="radio" name="model_choice" value="baseline" onchange="selectModel('baseline')">
+                        <div>
+                            <div style="font-weight: 600; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
+                                Baseline Bagging Classifier
+                                <span class="badge badge-info" style="font-size: 0.7rem;">63.9% Accuracy</span>
+                            </div>
+                            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px;">
+                                Classical ensemble model from notebook Cell 165 (10 Decision Trees with StandardScaler).
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" name="model" id="formModelInput" value="temporal_transformer">
+
+                <div class="file-grid">
+                    <div class="file-slot" id="slot-0">
+                        <div class="file-label">
+                            <span>1. mem_read.csv</span>
+                            <span class="badge badge-info">Memory</span>
+                        </div>
+                        <div class="file-desc">Process memory page read access events</div>
+                        <input type="file" name="file_0" accept=".csv" required onchange="highlightSlot(this, 'slot-0')">
+                    </div>
+
+                    <div class="file-slot" id="slot-1">
+                        <div class="file-label">
+                            <span>2. mem_write.csv</span>
+                            <span class="badge badge-info">Memory</span>
+                        </div>
+                        <div class="file-desc">Memory modification / page write events</div>
+                        <input type="file" name="file_1" accept=".csv" required onchange="highlightSlot(this, 'slot-1')">
+                    </div>
+
+                    <div class="file-slot" id="slot-2">
+                        <div class="file-label">
+                            <span>3. mem_exec.csv</span>
+                            <span class="badge badge-info">Memory</span>
+                        </div>
+                        <div class="file-desc">Instruction fetch / code execution events</div>
+                        <input type="file" name="file_2" accept=".csv" required onchange="highlightSlot(this, 'slot-2')">
+                    </div>
+
+                    <div class="file-slot" id="slot-3">
+                        <div class="file-label">
+                            <span>4. mem_readwrite.csv</span>
+                            <span class="badge badge-info">Memory</span>
+                        </div>
+                        <div class="file-desc">Combined read/write operations</div>
+                        <input type="file" name="file_3" accept=".csv" required onchange="highlightSlot(this, 'slot-3')">
+                    </div>
+
+                    <div class="file-slot" id="slot-4">
+                        <div class="file-label">
+                            <span>5. ata_read.csv</span>
+                            <span class="badge badge-warning">Storage</span>
+                        </div>
+                        <div class="file-desc">ATA disk sector read telemetry (auxiliary)</div>
+                        <input type="file" name="file_4" accept=".csv" required onchange="highlightSlot(this, 'slot-4')">
+                    </div>
+
+                    <div class="file-slot" id="slot-5">
+                        <div class="file-label">
+                            <span>6. ata_write.csv</span>
+                            <span class="badge badge-warning">Storage</span>
+                        </div>
+                        <div class="file-desc">ATA disk sector write telemetry (auxiliary)</div>
+                        <input type="file" name="file_5" accept=".csv" required onchange="highlightSlot(this, 'slot-5')">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        Run Preprocessor & Classifier
+                    </button>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-secondary" onclick="loadSample('benign')">
+                            Load Benign Sample (Firefox/Zip)
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="loadSample('ransomware')">
+                            Load Ransomware Sample (WannaCry/Conti)
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="card loader" id="loader">
+            <div class="spinner"></div>
+            <h3 id="loaderTitle">Preprocessing Telemetry and Running Classifier...</h3>
+            <p style="color: var(--text-secondary); margin-top: 8px;">Cleaning rows, parsing addresses, scaling features, predicting ransomware confidence.</p>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsArea" style="display: none;">
+            <!-- Overall Verdict Banner -->
+            <div id="verdictBanner" class="verdict-banner">
+                <div>
+                    <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);">Overall Sample Classification</div>
+                    <div id="verdictTitle" class="verdict-title">RANSOMWARE DETECTED</div>
+                    <div id="verdictSubtitle" class="verdict-desc">High concentration of anomalous memory access events detected across workload files.</div>
+                    <div style="margin-top: 8px; font-size: 0.85rem; color: #cbd5e1;">
+                        Evaluated with: <strong id="modelUsedName" style="color: #d8b4fe;">Temporal-Aware Transformer</strong>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="riskLevelBadge" class="badge" style="font-size: 1rem; padding: 6px 16px;">CRITICAL RISK</div>
+                    <div style="margin-top: 6px; font-size: 0.9rem; color: var(--text-secondary);">
+                        Model Confidence: <strong id="overallConfidence">95.4%</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preprocessing & Statistics Summary -->
+            <div class="card">
+                <div class="card-title">
+                    <span>Preprocessing & Execution Metrics</span>
+                    <span class="badge badge-info" id="modelBadgeSummary">Model Summary</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Files Processed</div>
+                        <div class="stat-value" id="statFiles">6</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">4 Memory, 2 Storage</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Memory Operations</div>
+                        <div class="stat-value" id="statMemOps">0</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Features Scaled</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Dropped Missing Rows</div>
+                        <div class="stat-value" id="statDropped">0</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Data Cleaned</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Ransomware Ratio</div>
+                        <div class="stat-value" id="statRansomRatio">0%</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Operations Flagged</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px;">
+                        <span>Operations Breakdown: <strong id="benignCountText">0</strong> Benign vs <strong id="ransomCountText">0</strong> Malicious</span>
+                        <span id="ratioText">0% Ransomware</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div id="progressBar" class="progress-bar" style="width: 0%; background-color: var(--accent-red);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Per-File Analysis Table -->
+            <div class="card">
+                <div class="card-title">
+                    <span>File Telemetry & Operations Breakdown</span>
+                    <span class="badge badge-info">6 Files</span>
+                </div>
+                <div class="table-responsive">
+                    <table id="fileMetricsTable">
+                        <thead>
+                            <tr>
+                                <th>CSV Filename</th>
+                                <th>Role</th>
+                                <th>Operations</th>
+                                <th>Malicious Ops</th>
+                                <th>Benign Ops</th>
+                                <th>Malicious Ratio</th>
+                                <th>Confidence</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Memory Architecture Breakdown -->
+            <div class="card">
+                <div class="card-title">
+                    <span>Memory Architecture Breakdown (Page Types)</span>
+                </div>
+                <div class="table-responsive">
+                    <table id="typeBreakdownTable">
+                        <thead>
+                            <tr>
+                                <th>Page Type / Architecture</th>
+                                <th>Operations Count</th>
+                                <th>Malicious Predictions</th>
+                                <th>Ransomware Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sample Data Preview Table -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div class="card-title" style="margin-bottom: 0;">
+                        <span>Inference Results Preview (First 100 Operations)</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="downloadPredictions()" style="padding: 8px 16px; font-size: 0.85rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Download Full Predictions CSV
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>Source File</th>
+                                <th>GPA (Hex)</th>
+                                <th>GPA (Dec)</th>
+                                <th>Size</th>
+                                <th>Entropy</th>
+                                <th>Page Type</th>
+                                <th>Prediction</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSelectedModel = 'temporal_transformer';
+
+        function selectModel(modelId) {
+            currentSelectedModel = modelId;
+            document.getElementById('formModelInput').value = modelId;
+            
+            document.getElementById('card-temporal').classList.toggle('selected', modelId === 'temporal_transformer');
+            document.getElementById('card-baseline').classList.toggle('selected', modelId === 'baseline');
+        }
+
+        function highlightSlot(input, slotId) {
+            const slot = document.getElementById(slotId);
+            if (input.files && input.files.length > 0) {
+                slot.classList.add('has-file');
+            } else {
+                slot.classList.remove('has-file');
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            formData.set('model', currentSelectedModel);
+            showLoader();
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                alert('Error processing files: ' + err.message);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        async function loadSample(sampleType) {
+            showLoader();
+            try {
+                const response = await fetch('/api/demo?type=' + sampleType + '&model=' + currentSelectedModel);
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                alert('Error loading sample: ' + err.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('resultsArea').style.display = 'none';
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        function renderResults(data) {
+            if (data.status === 'error') {
+                alert('Preprocessing Error: ' + data.message);
+                return;
+            }
+
+            const s = data.summary;
+            document.getElementById('resultsArea').style.display = 'block';
+
+            // Verdict banner
+            const banner = document.getElementById('verdictBanner');
+            const title = document.getElementById('verdictTitle');
+            const sub = document.getElementById('verdictSubtitle');
+            const badge = document.getElementById('riskLevelBadge');
+
+            if (s.overall_verdict === 'RANSOMWARE') {
+                banner.className = 'verdict-banner ransomware';
+                title.textContent = 'RANSOMWARE BEHAVIOR DETECTED';
+                sub.textContent = 'High concentration of malicious memory access operations detected across workload files.';
+                badge.className = 'badge badge-danger';
+                badge.textContent = s.risk_level + ' RISK';
+                document.getElementById('progressBar').style.backgroundColor = 'var(--accent-red)';
+            } else {
+                banner.className = 'verdict-banner benign';
+                title.textContent = 'BENIGN EXECUTION DETECTED';
+                sub.textContent = 'Access characteristics conform to standard non-malicious application patterns.';
+                badge.className = 'badge badge-success';
+                badge.textContent = 'LOW RISK / BENIGN';
+                document.getElementById('progressBar').style.backgroundColor = 'var(--accent-green)';
+            }
+
+            document.getElementById('modelUsedName').textContent = s.model_name + ` (F1: ${s.model_f1_score}, Acc: ${s.model_accuracy})`;
+            document.getElementById('modelBadgeSummary').textContent = s.model_name;
+
+            document.getElementById('overallConfidence').textContent = s.avg_confidence_pct + '%';
+            document.getElementById('statFiles').textContent = s.total_files_analyzed;
+            document.getElementById('statMemOps').textContent = s.total_memory_operations.toLocaleString();
+            document.getElementById('statDropped').textContent = s.total_dropped_nulls;
+            document.getElementById('statRansomRatio').textContent = s.ransomware_ratio_pct + '%';
+
+            document.getElementById('benignCountText').textContent = s.benign_operations_count.toLocaleString();
+            document.getElementById('ransomCountText').textContent = s.ransomware_operations_count.toLocaleString();
+            document.getElementById('ratioText').textContent = s.ransomware_ratio_pct + '% Ransomware';
+            document.getElementById('progressBar').style.width = s.ransomware_ratio_pct + '%';
+
+            // File metrics table
+            const fTbody = document.querySelector('#fileMetricsTable tbody');
+            fTbody.innerHTML = '';
+            data.file_metrics.forEach(f => {
+                const tr = document.createElement('tr');
+                const isRans = f.primary_verdict === 'RANSOMWARE';
+                const isStorage = f.primary_verdict === 'STORAGE_TELEMETRY';
+                const tagClass = isStorage ? 'badge-info' : (isRans ? 'badge-danger' : 'badge-success');
+
+                tr.innerHTML = `
+                    <td><strong>${f.filename}</strong></td>
+                    <td>${f.type}</td>
+                    <td>${typeof f.operations === 'number' ? f.operations.toLocaleString() : f.operations}</td>
+                    <td>${typeof f.predicted_ransomware === 'number' ? f.predicted_ransomware.toLocaleString() : f.predicted_ransomware}</td>
+                    <td>${typeof f.predicted_benign === 'number' ? f.predicted_benign.toLocaleString() : f.predicted_benign}</td>
+                    <td>${typeof f.ransomware_ratio_pct === 'number' ? f.ransomware_ratio_pct + '%' : f.ransomware_ratio_pct}</td>
+                    <td>${typeof f.avg_confidence_pct === 'number' ? f.avg_confidence_pct + '%' : f.avg_confidence_pct}</td>
+                    <td><span class="badge ${tagClass}">${f.primary_verdict}</span></td>
+                `;
+                fTbody.appendChild(tr);
+            });
+
+            // Page type breakdown table
+            const tTbody = document.querySelector('#typeBreakdownTable tbody');
+            tTbody.innerHTML = '';
+            for (const [tName, tData] of Object.entries(data.type_breakdown)) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${tName}</strong></td>
+                    <td>${tData.count.toLocaleString()}</td>
+                    <td>${tData.ransomware_count.toLocaleString()}</td>
+                    <td>${tData.ransomware_pct}%</td>
+                `;
+                tTbody.appendChild(tr);
+            }
+
+            // Preview rows table
+            const pTbody = document.querySelector('#previewTable tbody');
+            pTbody.innerHTML = '';
+            data.preview_rows.forEach(r => {
+                const tr = document.createElement('tr');
+                const isMal = r.classification === 'RANSOMWARE';
+                tr.innerHTML = `
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">${r.source_file}</td>
+                    <td><code style="color: #93c5fd;">${r.GPA_hex}</code></td>
+                    <td style="color: var(--text-secondary);">${r.GPA_dec.toLocaleString()}</td>
+                    <td>${r.size} B</td>
+                    <td>${r.entropy}</td>
+                    <td>${r.type_label}</td>
+                    <td><span class="tag-pill ${isMal ? 'tag-mal' : 'tag-ben'}">${r.classification}</span></td>
+                    <td>${r.confidence}%</td>
+                `;
+                pTbody.appendChild(tr);
+            });
+
+            // Smooth scroll to results
+            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadPredictions() {
+            window.location.href = '/download/predictions';
+        }
+    </script>
+</body>
+</html>
